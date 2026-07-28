@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wild Atoms Software Division — Pre-Echo</title>
+<link rel="icon" href="assets/logo/wildatoms-mark.png">
+<style>
+@font-face{
+  font-family:'Sometype Mono';
+  src:url('assets/fonts/SometypeMono-Regular.ttf') format('truetype');
+  font-weight:400; font-style:normal; font-display:swap;
+}
+@font-face{
+  font-family:'Sometype Mono';
+  src:url('assets/fonts/SometypeMono-Bold.ttf') format('truetype');
+  font-weight:700; font-style:normal; font-display:swap;
+}
+@font-face{
+  font-family:'Sometype Mono';
+  src:url('assets/fonts/SometypeMono-Italic.ttf') format('truetype');
+  font-weight:400; font-style:italic; font-display:swap;
+}
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap');
+
+:root{
+  --void:#08090b;
+  --panel:#111318;
+  --bone:#EDE9E1;
+  --bone-dim:#a8a49c;
+  --cherenkov:#4FD8FF;
+  --cherenkov-dim:#2a7f96;
+  --ember:#FF6A3D;
+  --line: rgba(237,233,225,0.14);
+  --hud-font:'Sometype Mono', monospace;
+  --display-font:'Oswald', sans-serif;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{
+  height:100%; width:100%;
+  overflow:hidden;
+  background:var(--void);
+  color:var(--bone);
+  font-family:var(--hud-font);
+}
+a{color:var(--cherenkov); text-decoration:none;}
+
+/* ---------- world layout ---------- */
+#world{
+  position:fixed; inset:0;
+  width:400vw; height:100vh;
+  display:flex;
+  transition: transform 900ms cubic-bezier(.65,0,.35,1);
+  will-change: transform;
+}
+.page{
+  position:relative;
+  width:100vw; height:100vh;
+  flex:0 0 100vw;
+  overflow:hidden;
+}
+.section-track{
+  position:absolute; inset:0;
+  transition: transform 900ms cubic-bezier(.65,0,.35,1);
+  will-change: transform;
+}
+.section{
+  position:relative;
+  width:100vw; height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background-size:cover;
+  background-position:center;
+}
+.section::before{
+  content:'';
+  position:absolute; inset:0;
+  background:
+    linear-gradient(180deg, rgba(6,7,9,.55) 0%, rgba(6,7,9,.72) 55%, rgba(6,7,9,.92) 100%);
+  z-index:1;
+}
+.section::after{
+  content:'';
+  position:absolute; inset:0;
+  background: repeating-linear-gradient(180deg, rgba(255,255,255,.025) 0px, rgba(255,255,255,.025) 1px, transparent 1px, transparent 3px);
+  z-index:2; pointer-events:none; mix-blend-mode:overlay; opacity:.5;
+}
+.section .content{
+  position:relative; z-index:3;
+  max-width:920px;
+  width:88%;
+  padding: 6vh 0;
+}
+.section.tint-cherenkov::before{
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(79,216,255,0.20), transparent 60%),
+    linear-gradient(180deg, rgba(6,7,9,.55) 0%, rgba(6,7,9,.72) 55%, rgba(6,7,9,.92) 100%);
+}
+.section.tint-ember::before{
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(255,106,61,0.22), transparent 60%),
+    linear-gradient(180deg, rgba(6,7,9,.55) 0%, rgba(6,7,9,.72) 55%, rgba(6,7,9,.92) 100%);
+}
+
+/* ---------- HUD frame ---------- */
+#hud{
+  position:fixed; inset:0; z-index:50; pointer-events:none;
+  font-family:var(--hud-font);
+}
+.corner{
+  position:absolute; width:38px; height:38px;
+  border-color:var(--cherenkov); opacity:.55;
+}
+.corner.tl{top:18px; left:18px; border-top:2px solid; border-left:2px solid;}
+.corner.tr{top:18px; right:18px; border-top:2px solid; border-right:2px solid;}
+.corner.bl{bottom:18px; left:18px; border-bottom:2px solid; border-left:2px solid;}
+.corner.br{bottom:18px; right:18px; border-bottom:2px solid; border-right:2px solid;}
+
+#hud-top{
+  position:absolute; top:20px; left:70px; right:70px;
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:11px; letter-spacing:.14em; color:var(--bone-dim);
+}
+#hud-top .brand{ display:flex; align-items:center; gap:10px; }
+#hud-top .brand img{ height:22px; width:auto; opacity:.9; filter: drop-shadow(0 0 6px rgba(79,216,255,.25)); }
+#hud-top .pagepos{ color:var(--cherenkov); }
+
+#hud-bottom{
+  position:absolute; bottom:20px; left:70px; right:70px;
+  display:flex; align-items:flex-end; justify-content:space-between;
+  font-size:10.5px; letter-spacing:.12em; color:var(--bone-dim);
+}
+.keys{ display:flex; gap:18px; pointer-events:auto; }
+.key-hint{ display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; }
+.key-hint .k{
+  width:30px; height:26px; border:1px solid var(--line); border-radius:4px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--display-font); font-weight:600; font-size:12px; color:var(--bone);
+  background:rgba(255,255,255,.03);
+  transition: all .15s ease;
+}
+.key-hint span{ font-size:8.5px; opacity:.7; }
+.key-hint.active .k, .key-hint:hover .k{
+  border-color:var(--cherenkov); color:var(--cherenkov);
+  box-shadow:0 0 10px rgba(79,216,255,.35);
+  background:rgba(79,216,255,.08);
+}
+
+.o2gauge{ text-align:right; }
+.o2gauge .label{ font-size:9px; opacity:.7; margin-bottom:4px;}
+.o2bar{ width:120px; height:6px; border:1px solid var(--line); position:relative; }
+.o2bar i{ position:absolute; inset:1px; background:linear-gradient(90deg,var(--cherenkov),var(--cherenkov-dim)); width:74%; display:block;}
+
+.dots{ position:absolute; left:50%; bottom:20px; transform:translateX(-50%); display:flex; gap:8px; pointer-events:auto;}
+.dots i{ width:6px; height:6px; border-radius:50%; background:var(--line); cursor:pointer; display:block; transition:.2s;}
+.dots i.on{ background:var(--cherenkov); box-shadow:0 0 8px var(--cherenkov); }
+
+/* section progress ticks (right side) */
+#seciter{ position:absolute; right:24px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:7px; pointer-events:auto;}
+#seciter i{ width:4px; height:16px; background:var(--line); display:block; cursor:pointer;}
+#seciter i.on{ background:var(--cherenkov); box-shadow:0 0 6px var(--cherenkov);}
+
+/* ---------- typography ---------- */
+.eyebrow{
+  font-size:11px; letter-spacing:.3em; color:var(--cherenkov); text-transform:uppercase; margin-bottom:16px; display:block;
+}
+h1.disp{ font-family:var(--display-font); font-weight:700; text-transform:uppercase; font-size:clamp(34px,6vw,74px); line-height:1.02; letter-spacing:.01em; }
+h2.disp{ font-family:var(--display-font); font-weight:600; text-transform:uppercase; font-size:clamp(24px,4vw,42px); line-height:1.08; margin-bottom:18px;}
+p.lead{ font-size:clamp(14px,1.4vw,17px); line-height:1.7; color:var(--bone); max-width:640px; }
+p.lead + p.lead{ margin-top:14px; }
+.tag-row{ display:flex; gap:10px; flex-wrap:wrap; margin:20px 0; }
+.tag{ font-size:10px; letter-spacing:.12em; border:1px solid var(--line); padding:6px 10px; color:var(--bone-dim); }
+
+.grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:22px; margin-top:26px; }
+.card{ border:1px solid var(--line); background:rgba(10,11,14,.55); padding:20px; }
+.card h3{ font-family:var(--display-font); font-size:16px; letter-spacing:.05em; color:var(--cherenkov); margin-bottom:10px; text-transform:uppercase;}
+.card p{ font-size:13px; line-height:1.6; color:var(--bone-dim); }
+
+.beast-grid{ display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:24px;}
+.beast{ border:1px solid var(--line); background:rgba(10,11,14,.6); overflow:hidden;}
+.beast .art{ height:150px; background-size:cover; background-position:center; }
+.beast .info{ padding:16px 18px;}
+.beast .info .type{ font-size:9px; letter-spacing:.16em; color:var(--ember); margin-bottom:6px;}
+.beast .info h3{ font-family:var(--display-font); font-size:17px; text-transform:uppercase; margin-bottom:6px;}
+.beast .info p{ font-size:12.5px; line-height:1.55; color:var(--bone-dim);}
+
+.sell-list{ display:grid; grid-template-columns:1fr 1fr; gap:20px 40px; margin-top:24px;}
+.sell-item{ border-left:2px solid var(--cherenkov); padding-left:16px;}
+.sell-item h3{ font-family:var(--display-font); font-size:15px; text-transform:uppercase; letter-spacing:.03em; margin-bottom:6px;}
+.sell-item p{ font-size:12.5px; color:var(--bone-dim); line-height:1.55;}
+
+.cta-line{ margin-top:28px; font-size:12px; letter-spacing:.1em; color:var(--bone-dim); }
+.cta-line b{ color:var(--cherenkov); }
+
+.wordmark-img{ max-width:440px; width:60%; filter: drop-shadow(0 0 30px rgba(79,216,255,.25)); margin-bottom:26px; }
+
+.contact-box{ border:1px solid var(--line); background:rgba(10,11,14,.6); padding:34px; margin-top:24px; }
+.contact-row{ display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid var(--line); font-size:14px;}
+.contact-row:last-child{ border-bottom:none; }
+.contact-row .lbl{ color:var(--bone-dim); letter-spacing:.1em; font-size:11px; text-transform:uppercase;}
+
+.logo-hero{ width:min(70vw,420px); margin-bottom:6px; filter: drop-shadow(0 0 40px rgba(79,216,255,.2)); }
+.tagline{ font-family:var(--hud-font); color:var(--cherenkov); letter-spacing:.3em; font-size:clamp(12px,1.6vw,15px); margin-top:18px;}
+.subtag{ color:var(--bone-dim); font-size:12px; margin-top:10px; letter-spacing:.06em;}
+
+/* ---------- glitch transition ---------- */
+.timeburn::before{
+  content:''; position:fixed; inset:0; z-index:200; pointer-events:none;
+  background:rgba(79,216,255,0.10);
+  mix-blend-mode:screen;
+  animation: tb-flash 420ms ease-out;
+}
+@keyframes tb-flash{
+  0%{ opacity:1; }
+  100%{ opacity:0; }
+}
+.timeburn #world{ filter: blur(1px); }
+.timeburn #hud{ animation: tb-shake 420ms ease-out; }
+@keyframes tb-shake{
+  0%{ transform:translate(0,0);} 20%{ transform:translate(-2px,1px);} 40%{ transform:translate(2px,-1px);}
+  60%{ transform:translate(-1px,0);} 80%{ transform:translate(1px,1px);} 100%{ transform:translate(0,0);}
+}
+
+@media (prefers-reduced-motion: reduce){
+  #world, .section-track{ transition:none !important; }
+  .timeburn::before, .timeburn #hud{ animation:none !important; }
+}
+
+/* ---------- mobile ---------- */
+@media (max-width:760px){
+  #hud-top,#hud-bottom{ left:20px; right:20px; }
+  .grid3{ grid-template-columns:1fr; }
+  .beast-grid{ grid-template-columns:1fr; }
+  .sell-list{ grid-template-columns:1fr; }
+  .keys{ gap:10px; }
+  .o2gauge{ display:none; }
+  #seciter{ right:12px; }
+  h1.disp{ font-size:clamp(28px,9vw,44px); }
+}
+
+/* boot overlay */
+#boot{
+  position:fixed; inset:0; background:#000; z-index:500;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--hud-font); color:var(--cherenkov); letter-spacing:.3em; font-size:13px;
+  transition: opacity .7s ease;
+}
+.boot-inner{ display:flex; flex-direction:column; align-items:center; gap:16px; }
+.boot-bar{ width:220px; height:3px; border:1px solid var(--line); }
+.boot-bar i{ display:block; height:100%; background:var(--cherenkov); width:0%; animation: bootfill 2.1s ease forwards; }
+@keyframes bootfill{ to{ width:100%; } }
+.blink{ animation: blink-anim 1s steps(2,start) infinite; cursor:pointer; }
+@keyframes blink-anim{ to{ visibility:hidden; } }
+
+#hud, #world{ opacity:0; transition: opacity .9s ease; }
+body.booted #hud, body.booted #world{ opacity:1; }
+
+/* gallery */
+.gallery-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:26px; }
+.gallery-item{ position:relative; height:150px; border:1px solid var(--line); background-size:cover; background-position:center; overflow:hidden; }
+.gallery-item span{
+  position:absolute; left:0; right:0; bottom:0; padding:8px 10px;
+  font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--bone);
+  background:linear-gradient(180deg, transparent, rgba(0,0,0,.85));
+}
+@media (max-width:760px){ .gallery-grid{ grid-template-columns:1fr 1fr; } }
+</style>
+</head>
+<body>
+
+<div id="boot">
+  <div class="boot-inner">
+    <span id="boot-text">INITIALIZING VISOR...</span>
+    <div class="boot-bar" id="boot-bar"><i></i></div>
+  </div>
+</div>
+
+<div id="hud">
+  <div class="corner tl"></div><div class="corner tr"></div>
+  <div class="corner bl"></div><div class="corner br"></div>
+
+  <div id="hud-top">
+    <div class="brand">
+      <img src="assets/logo/wildatoms-mark.png" alt="Wild Atoms">
+      <span>WILD ATOMS // SOFTWARE DIVISION</span>
+    </div>
+    <div class="pagepos" id="pagepos">PAGE 01/04 — HOME</div>
+  </div>
+
+  <div id="seciter"></div>
+
+  <div id="hud-bottom">
+    <div class="keys">
+      <div class="key-hint" data-action="s"><div class="k">S</div><span>BACK</span></div>
+      <div class="key-hint" data-action="w"><div class="k">W</div><span>FORWARD</span></div>
+      <div class="key-hint" data-action="a"><div class="k">A</div><span>TURN L</span></div>
+      <div class="key-hint" data-action="d"><div class="k">D</div><span>TURN R</span></div>
+      <div class="key-hint" data-action="space"><div class="k" style="width:52px;">SPC</div><span>HOME</span></div>
+    </div>
+    <div class="o2gauge">
+      <div class="label">O2 // TIMELINE STABLE</div>
+      <div class="o2bar"><i></i></div>
+    </div>
+  </div>
+  <div class="dots" id="dots"></div>
+</div>
+
+<div id="world">
+
+  <!-- ============ PAGE 1: HOME ============ -->
+  <div class="page" id="page-home">
+    <div class="section-track">
+
+      <div class="section tint-cherenkov" style="background-image:url('assets/img/home-hero.jpg')">
+        <div class="content" style="text-align:center;">
+          <img class="logo-hero" src="assets/logo/wildatoms-lockup.png" alt="Wild Atoms Software Division">
+          <div class="tagline">PRESS W &mdash; MOVE FORWARD</div>
+          <div class="subtag">A small studio building large, dangerous worlds.</div>
+        </div>
+      </div>
+
+      <div class="section tint-cherenkov" style="background-image:url('assets/img/anomaly-portal.jpg')">
+        <div class="content">
+          <span class="eyebrow">Studio Thesis</span>
+          <h2 class="disp">We build games from the ground floor up, not the top down.</h2>
+          <p class="lead">Wild Atoms Software Division is a small team making tightly-scoped, mechanically honest survival games. No bloat, no filler systems &mdash; every mechanic earns its place before it ships.</p>
+          <p class="lead">Our first title, <b style="color:var(--cherenkov)">Pre-Echo</b>, is currently in pre-production: a third-person tactical survival-horror built in Unreal Engine 5.</p>
+          <div class="cta-line">Press <b>D</b> to step into the Collider, or <b>A</b> to loop around to Contact.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ PAGE 2: PRE-ECHO ============ -->
+  <div class="page" id="page-game">
+    <div class="section-track">
+
+      <!-- 1 title -->
+      <div class="section tint-cherenkov" style="background-image:url('assets/img/facility-descent.jpg')">
+        <div class="content" style="text-align:center;">
+          <img class="wordmark-img" src="assets/img/preecho-wordmark.jpg" alt="Pre-Echo" style="margin:0 auto 26px;">
+          <div class="tag-row" style="justify-content:center;">
+            <span class="tag">THIRD-PERSON TACTICAL SURVIVAL-HORROR</span>
+            <span class="tag">PC / CONSOLES</span>
+            <span class="tag">UNREAL ENGINE 5</span>
+          </div>
+          <p class="lead" style="margin:0 auto; text-align:center;">Survival meets Dead Space, grounded in the boots of a firefighter.</p>
+        </div>
+      </div>
+
+      <!-- 2 logline -->
+      <div class="section tint-cherenkov" style="background-image:url('assets/img/traversal-fireman.jpg')">
+        <div class="content">
+          <span class="eyebrow">01 — The Logline</span>
+          <h2 class="disp">You are the first response to a disaster that hasn't happened yet.</h2>
+          <p class="lead">A routine call to a secretive subterranean research facility ends in a catastrophic interdimensional breach. Two elite firemen &mdash; armed with no guns, only rescue tools and instinct &mdash; must climb eight stories out of a death trap.</p>
+          <p class="lead">They'll hunt time-warping anomalies, forge weapons from otherworldly remains, and break the facility's own lockdown to stop a global catastrophe.</p>
+        </div>
+      </div>
+
+      <!-- 3 the hook -->
+      <div class="section tint-cherenkov" style="background-image:url('assets/img/visor-glass.jpg')">
+        <div class="content">
+          <span class="eyebrow">02 — The Hook</span>
+          <h2 class="disp">Firefighters respond after disaster strikes. Pre-Echo flips that.</h2>
+          <p class="lead">In this facility, sound travels faster than light. You will hear your own future screams as a warning &mdash; response and anticipation, collapsed into one dread-soaked mechanic.</p>
+          <div class="grid3">
+            <div class="card"><h3>Dead Space</h3><p>The setting and dread &mdash; a claustrophobic, industrial hull with nowhere safe to stand.</p></div>
+            <div class="card"><h3>Bloodborne</h3><p>Brutal, tactical melee. No guns &mdash; just tools and timing.</p></div>
+            <div class="card"><h3>Prey</h3><p>Environmental problem-solving over brute force. The facility is the puzzle.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 setting -->
+      <div class="section tint-cherenkov" style="background-image:url('assets/img/zero-g-debris.jpg')">
+        <div class="content">
+          <span class="eyebrow">03 — The Setting</span>
+          <h2 class="disp">The Subterranean Collider</h2>
+          <p class="lead">A privatized, off-the-books Deep-Earth Particle Collider, buried beneath the industrial sectors. An experimental Tachyon Condensate ruptured &mdash; a glowing puddle of liquid time &mdash; and tore a sinkhole into a dimension where time runs backward.</p>
+          <p class="lead">The facility's automated lockdown treats the breach like a rigid firewall: hard-coded to deny all outbound anomalous traffic while logging every incursion below. The only way out is up &mdash; through the core, floor by floor, each one a new failure of physics.</p>
+        </div>
+      </div>
+
+      <!-- 5 core loop -->
+      <div class="section tint-ember" style="background-image:url('assets/img/forge-station.jpg')">
+        <div class="content">
+          <span class="eyebrow">04 — The Core Loop</span>
+          <h2 class="disp">Players don't loot ammo. They harvest and adapt.</h2>
+          <div class="grid3">
+            <div class="card"><h3>Survive</h3><p>Traverse warped environments &mdash; zero-gravity flooded basements, inverted chemical fires &mdash; with standard fireman traversal tools: grapples, thermal imaging.</p></div>
+            <div class="card"><h3>Hunt &amp; Parry</h3><p>Melee Tachyon anomalies. Parrying with a Halligan bar briefly disrupts an enemy's time-stream, opening a lethal counter.</p></div>
+            <div class="card"><h3>Forge</h3><p>Extract Tachyon Shards from fallen enemies. Fuse alien tech with firefighting gear at welding stations &mdash; a Chrono-Axe that strikes a split-second into the future.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6 time burn -->
+      <div class="section tint-ember" style="background-image:url('assets/img/time-burn-hand.jpg')">
+        <div class="content">
+          <span class="eyebrow">05 — The Time-Burn Mechanic</span>
+          <h2 class="disp">No health bars. Just borrowed time.</h2>
+          <p class="lead">Taking a hit doesn't just cost health &mdash; it manipulates your local time. Movement, dodges, and swings slow by half for several seconds. Panic-mashing while slowed gets you killed.</p>
+          <p class="lead">Heal by finding heat sources &mdash; raging fires, electrical sparks &mdash; to re-anchor your timeline. Oxygen is finite, and every tank spent rescuing a trapped scientist is a tank you don't have for the next floor.</p>
+        </div>
+      </div>
+
+      <!-- 7 immersive ui -->
+      <div class="section tint-cherenkov" style="background-image:url('assets/img/hud-mockup.jpg')">
+        <div class="content">
+          <span class="eyebrow">06 — Immersive UI</span>
+          <h2 class="disp">The visor is the interface. There is no other menu.</h2>
+          <p class="lead">Minimalist, diegetic HUD: health reads as Time-Burn glitch textures on the fireman's own body, oxygen lives on the tank gauge, and every readout flickers in Tachyon blue &mdash; a constant reminder of how loose your grip on "now" really is.</p>
+        </div>
+      </div>
+
+      <!-- 8 bestiary -->
+      <div class="section tint-ember" style="background-image:url('assets/img/bestiary-group.jpg')">
+        <div class="content">
+          <span class="eyebrow">07 — The Bestiary</span>
+          <h2 class="disp">Not zombies. Physics experiments gone wrong.</h2>
+          <div class="beast-grid">
+            <div class="beast">
+              <div class="art" style="background-image:url('assets/img/bestiary-pendulum.jpg')"></div>
+              <div class="info"><div class="type">BRUISER</div><h3>The Pendulums</h3><p>Monolithic constructs of architectural debris and twisted steel, held together by searing thermal energy. Slow, predictable, devastating heavy hitters.</p></div>
+            </div>
+            <div class="beast">
+              <div class="art" style="background-image:url('assets/img/bestiary-revert.jpg')"></div>
+              <div class="info"><div class="type">RANGED</div><h3>The Reverts</h3><p>Floating audio-disruptors that swarm and attack with sound waves rather than gas or projectiles &mdash; built to disable, not just damage.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 9 climax -->
+      <div class="section tint-cherenkov" style="background-image:url('assets/img/prime-anomaly.jpg')">
+        <div class="content">
+          <span class="eyebrow">08 — The Climax</span>
+          <h2 class="disp">The Prime Anomaly</h2>
+          <p class="lead">The final "boss" isn't a villain &mdash; he's the Lead Scientist who fused himself with the mainframe to hold the lockdown and save the surface world. Tachyon radiation bombarded him, merging his body with the console and fracturing him across infinite timelines.</p>
+          <p class="lead">To escape, the firemen must forcefully disconnect him &mdash; killing the only man acting as humanity's firewall against the apocalypse. Did we just doom the world by doing our job?</p>
+        </div>
+      </div>
+
+      <!-- 10 why this sells -->
+      <div class="section tint-ember" style="background-image:url('assets/img/anomaly-portal.jpg')">
+        <div class="content">
+          <span class="eyebrow">For Investors</span>
+          <h2 class="disp">Why This Sells</h2>
+          <div class="sell-list">
+            <div class="sell-item"><h3>Unexploited Protagonist</h3><p>The market is saturated with space marines. A vulnerable, blue-collar first responder is a fantasy nobody else is selling.</p></div>
+            <div class="sell-item"><h3>Streamer-Friendly Tension</h3><p>The Time-Burn penalty and high-stakes melee create tense, highly shareable "clutch" moments built for Twitch and YouTube.</p></div>
+            <div class="sell-item"><h3>Deep Progression</h3><p>The Forge system offers a real progression tree &mdash; high replayability, varied combat builds.</p></div>
+            <div class="sell-item"><h3>AAA Visual Fidelity</h3><p>Heavy industrial realism against the ghostly blue glow of Cherenkov radiation, built for the largest screens.</p></div>
+          </div>
+          <div class="cta-line">Press <b>D</b> to open the Field Manual, or <b>A</b> to head back to the Hook.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ PAGE 3: FIELD MANUAL ============ -->
+  <div class="page" id="page-manual">
+    <div class="section-track">
+
+      <!-- 1 arsenal -->
+      <div class="section tint-ember" style="background-image:url('assets/img/forge-weld.jpg')">
+        <div class="content">
+          <span class="eyebrow">The Field Manual</span>
+          <h2 class="disp">The Arsenal: Weapons of Life, Reforged</h2>
+          <p class="lead">You don't loot ammo &mdash; you harvest interdimensional components. Fallen enemies leave behind glowing Tachyon Shards, integrated into standard fireman tools at industrial welding stations.</p>
+          <div class="grid3">
+            <div class="card"><h3>The Chrono-Axe</h3><p>The starting fire axe, fused with Tachyon crystals so the blade sits always slightly "in the future." Swing it, and it lands before you've finished the motion.</p></div>
+            <div class="card"><h3>Stasis Extinguisher</h3><p>A standard extinguisher loaded with Tachyon crystals. It doesn't put out fires &mdash; it freezes a target in a bubble of slow-time for 10 seconds.</p></div>
+            <div class="card"><h3>The Forge</h3><p>Every upgrade happens in-world at a welding station. No menus &mdash; progression is something you physically build.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 audio -->
+      <div class="section tint-cherenkov" style="background-image:url('assets/img/bestiary-revert.jpg')">
+        <div class="content">
+          <span class="eyebrow">Audio Design</span>
+          <h2 class="disp">Silence Is a Weapon</h2>
+          <p class="lead">The game's namesake mechanic: spatial audio lets you hear the screams of anomalies &mdash; or your own death &mdash; roughly 30 seconds before it happens. You map the threat with your ears long before you ever see it.</p>
+          <p class="lead">It turns every quiet corridor into a countdown, and rewards players who stop moving long enough to listen.</p>
+        </div>
+      </div>
+
+      <!-- 3 pattern recognition -->
+      <div class="section tint-ember" style="background-image:url('assets/img/hud-mockup.jpg')">
+        <div class="content">
+          <span class="eyebrow">Combat Reads</span>
+          <h2 class="disp">Reading the Stutter</h2>
+          <p class="lead">Because Tachyon creatures operate on their own broken clock, their attacks "stutter" &mdash; players must watch for a blue flash of Cherenkov radiation to know exactly when a strike will actually land.</p>
+          <p class="lead">Outside of combat, a Thermal Camera reveals footprints and lets you line up a stealth approach &mdash; sneaking in to smash the glowing Tachyon crystals on an enemy's body before it ever wakes up.</p>
+        </div>
+      </div>
+
+      <!-- 4 oxygen -->
+      <div class="section tint-cherenkov" style="background-image:url('assets/img/zero-g-debris.jpg')">
+        <div class="content">
+          <span class="eyebrow">Resource Management</span>
+          <h2 class="disp">The Survival Clock</h2>
+          <p class="lead">Oxygen is the primary resource, and it's finite. The tank gauge is built into the character model itself &mdash; never a floating menu &mdash; and a Time-Burn hit can rewind your remaining air supply, turning a manageable situation into an immediate panic.</p>
+          <p class="lead">Every floor asks the same question: spend your limited O2 and gear saving a trapped scientist &mdash; unlocking lore and bypass codes &mdash; or hoard it to survive the climb yourself.</p>
+          <div class="cta-line">Press <b>D</b> to browse the Concept Gallery, or <b>A</b> to return to Pre-Echo.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ PAGE 4: GALLERY ============ -->
+  <div class="page" id="page-gallery">
+    <div class="section-track">
+
+      <!-- 1 environments -->
+      <div class="section tint-cherenkov" style="background-image:url('assets/img/portal-detail.jpg')">
+        <div class="content">
+          <span class="eyebrow">Concept Gallery</span>
+          <h2 class="disp">Environments</h2>
+          <p class="lead">The Collider as we're building it &mdash; a facility where the architecture itself has stopped agreeing with physics.</p>
+          <div class="gallery-grid">
+            <div class="gallery-item" style="background-image:url('assets/img/facility-descent.jpg')"><span>The Descent</span></div>
+            <div class="gallery-item" style="background-image:url('assets/img/zero-g-debris.jpg')"><span>Zero-G Wreckage</span></div>
+            <div class="gallery-item" style="background-image:url('assets/img/anomaly-portal.jpg')"><span>The Breach</span></div>
+            <div class="gallery-item" style="background-image:url('assets/img/visor-glass.jpg')"><span>Through the Visor</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 characters & creatures -->
+      <div class="section tint-ember" style="background-image:url('assets/img/anomaly-detail.jpg')">
+        <div class="content">
+          <span class="eyebrow">Concept Gallery</span>
+          <h2 class="disp">Entities &amp; Gear</h2>
+          <p class="lead">Firemen, forged weapons, and the physics experiments that hunt them.</p>
+          <div class="gallery-grid">
+            <div class="gallery-item" style="background-image:url('assets/img/traversal-fireman.jpg')"><span>First Responder</span></div>
+            <div class="gallery-item" style="background-image:url('assets/img/weld-detail.jpg')"><span>The Forge</span></div>
+            <div class="gallery-item" style="background-image:url('assets/img/bestiary-pendulum.jpg')"><span>The Pendulums</span></div>
+            <div class="gallery-item" style="background-image:url('assets/img/revert-detail.jpg')"><span>The Reverts</span></div>
+            <div class="gallery-item" style="background-image:url('assets/img/time-burn-hand.jpg')"><span>Time-Burn</span></div>
+            <div class="gallery-item" style="background-image:url('assets/img/prime-anomaly.jpg')"><span>The Prime Anomaly</span></div>
+            <div class="gallery-item" style="background-image:url('assets/img/hud-mockup.jpg')"><span>Visor HUD</span></div>
+            <div class="gallery-item" style="background-image:url('assets/img/home-hero.jpg')"><span>The Approach</span></div>
+          </div>
+          <div class="cta-line">Press <b>D</b> to meet the studio, or <b>A</b> to return to the Field Manual.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ PAGE 5: STUDIO ============ -->
+  <div class="page" id="page-studio">
+    <div class="section-track">
+
+      <div class="section tint-cherenkov" style="background-image:url('assets/img/forge-station.jpg')">
+        <div class="content">
+          <span class="eyebrow">The Studio</span>
+          <h2 class="disp">Wild Atoms Software Division</h2>
+          <p class="lead">Named for the idea we build around: small, unstable pieces that release enormous energy when they collide. We're a compact team that prefers one sharp mechanic, fully realized, over ten shallow ones.</p>
+          <p class="lead">Pre-Echo is our first title &mdash; a deliberate, focused bet on tactical melee survival-horror, built by people who'd rather ship something dense with intent than broad and thin.</p>
+        </div>
+      </div>
+
+      <div class="section tint-ember" style="background-image:url('assets/img/facility-descent.jpg')">
+        <div class="content">
+          <span class="eyebrow">How We Work</span>
+          <h2 class="disp">Small team. AAA ambition. Indie discipline.</h2>
+          <div class="grid3">
+            <div class="card"><h3>Design First</h3><p>Every system starts as a question about tension, not a checklist item.</p></div>
+            <div class="card"><h3>Built in UE5</h3><p>Full commitment to next-gen fidelity across PC and consoles.</p></div>
+            <div class="card"><h3>Narrative-Led</h3><p>Mechanics and story are built in the same room, at the same time, by the same people.</p></div>
+          </div>
+          <div class="cta-line">Press <b>D</b> to meet the founders, or <b>A</b> to return to the Gallery.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ PAGE 6: TEAM ============ -->
+  <div class="page" id="page-team">
+    <div class="section-track">
+
+      <div class="section tint-cherenkov" style="background-image:url('assets/img/team-portrait.jpg')">
+        <div class="content">
+          <span class="eyebrow">The Founders</span>
+          <h2 class="disp">Three people. One studio.</h2>
+          <p class="lead">Wild Atoms Software Division is founded and run by three people who wanted to build one dense, dangerous game instead of ten shallow ones.</p>
+          <div class="grid3">
+            <div class="card"><h3>Vinod</h3><p>Co-Founder, Wild Atoms Software Division.</p></div>
+            <div class="card"><h3>Satya</h3><p>Co-Founder, Wild Atoms Software Division.</p></div>
+            <div class="card"><h3>Arudra</h3><p>Co-Founder, Wild Atoms Software Division.</p></div>
+          </div>
+          <div class="cta-line">Press <b>D</b> for Investors &amp; Press, or <b>A</b> to return to the Studio.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ PAGE 7: CONTACT ============ -->
+  <div class="page" id="page-contact">
+    <div class="section-track">
+
+      <div class="section tint-ember" style="background-image:url('assets/img/visor-glass.jpg')">
+        <div class="content">
+          <span class="eyebrow">Get In Touch</span>
+          <h2 class="disp">Investors &amp; Press</h2>
+          <p class="lead">Pre-Echo is currently in pre-production and open to conversations with publishing partners and investors.</p>
+          <div class="contact-box">
+            <div class="contact-row"><span class="lbl">Investors</span><a href="mailto:wildatomsd@gmail.com">wildatomsd@gmail.com</a></div>
+            <div class="contact-row"><span class="lbl">Enquiries</span><a href="mailto:wildatomsd@gmail.com">wildatomsd@gmail.com</a></div>
+            <div class="contact-row"><span class="lbl">General Contact</span><a href="mailto:wildatomsd@gmail.com">wildatomsd@gmail.com</a></div>
+          </div>
+          <div class="cta-line">Press <b>SPACE</b> to return Home.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const pages = [
+    { id:'page-home', label:'HOME', sections:2 },
+    { id:'page-game', label:'PRE-ECHO', sections:10 },
+    { id:'page-manual', label:'FIELD MANUAL', sections:4 },
+    { id:'page-gallery', label:'GALLERY', sections:2 },
+    { id:'page-studio', label:'STUDIO', sections:2 },
+    { id:'page-team', label:'TEAM', sections:1 },
+    { id:'page-contact', label:'CONTACT', sections:1 },
+  ];
+  let curPage = 0;
+  let curSection = pages.map(()=>0);
+  const world = document.getElementById('world');
+  const tracks = pages.map(p => document.querySelector('#'+p.id+' .section-track'));
+  const pagepos = document.getElementById('pagepos');
+  const dotsWrap = document.getElementById('dots');
+  const secWrap = document.getElementById('seciter');
+  let animating = false;
+
+  pages.forEach((p,i)=>{
+    const d = document.createElement('i');
+    if(i===0) d.className='on';
+    d.addEventListener('click', ()=> goToPage(i));
+    dotsWrap.appendChild(d);
+  });
+
+  function renderSecIter(){
+    secWrap.innerHTML = '';
+    const n = pages[curPage].sections;
+    for(let i=0;i<n;i++){
+      const el = document.createElement('i');
+      if(i===curSection[curPage]) el.className='on';
+      el.addEventListener('click', ()=> goToSection(i));
+      secWrap.appendChild(el);
+    }
+  }
+
+  function timeburn(){
+    document.body.classList.add('timeburn');
+    setTimeout(()=> document.body.classList.remove('timeburn'), 440);
+  }
+
+  function updateWorld(){
+    world.style.transform = `translateX(-${curPage*100}vw)`;
+    tracks.forEach((t,i)=>{
+      t.style.transform = `translateY(-${curSection[i]*100}vh)`;
+    });
+    pagepos.textContent = `PAGE ${String(curPage+1).padStart(2,'0')}/${String(pages.length).padStart(2,'0')} — ${pages[curPage].label}`;
+    [...dotsWrap.children].forEach((d,i)=> d.className = i===curPage ? 'on':'');
+    renderSecIter();
+  }
+
+  function goToPage(i){
+    if(animating) return;
+    i = ((i % pages.length) + pages.length) % pages.length;
+    if(i===curPage) return;
+    animating = true;
+    curPage = i;
+    timeburn();
+    updateWorld();
+    setTimeout(()=> animating=false, 900);
+  }
+
+  function goToSection(i){
+    if(animating) return;
+    const max = pages[curPage].sections - 1;
+    i = Math.max(0, Math.min(max, i));
+    if(i===curSection[curPage]) return;
+    animating = true;
+    curSection[curPage] = i;
+    timeburn();
+    updateWorld();
+    setTimeout(()=> animating=false, 900);
+  }
+
+  function forward(){ goToSection(curSection[curPage]+1); }
+  function backward(){ goToSection(curSection[curPage]-1); }
+  function turnRight(){ goToPage(curPage+1); }
+  function turnLeft(){ goToPage(curPage-1); }
+  function home(){
+    if(animating) return;
+    animating = true;
+    curPage = 0; curSection[0] = 0;
+    timeburn();
+    updateWorld();
+    setTimeout(()=> animating=false, 900);
+  }
+
+  function flashKey(action){
+    const el = document.querySelector(`.key-hint[data-action="${action}"]`);
+    if(!el) return;
+    el.classList.add('active');
+    setTimeout(()=> el.classList.remove('active'), 250);
+  }
+
+  window.addEventListener('keydown', (e)=>{
+    if(!booted){ dismissBoot(); return; }
+    const k = e.key.toLowerCase();
+    if(['w','a','s','d',' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) e.preventDefault();
+    if(k==='w' || k==='arrowup'){ forward(); flashKey('w'); }
+    else if(k==='s' || k==='arrowdown'){ backward(); flashKey('s'); }
+    else if(k==='d' || k==='arrowright'){ turnRight(); flashKey('d'); }
+    else if(k==='a' || k==='arrowleft'){ turnLeft(); flashKey('a'); }
+    else if(k===' '){ home(); flashKey('space'); }
+  }, {passive:false});
+
+  document.querySelectorAll('.key-hint').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      if(!booted) return;
+      const a = el.dataset.action;
+      if(a==='w') forward(); else if(a==='s') backward();
+      else if(a==='d') turnRight(); else if(a==='a') turnLeft();
+      else if(a==='space') home();
+      flashKey(a);
+    });
+  });
+
+  // wheel support
+  let wheelLock = false;
+  window.addEventListener('wheel', (e)=>{
+    if(!booted || wheelLock) return;
+    wheelLock = true;
+    if(e.deltaY > 15) forward();
+    else if(e.deltaY < -15) backward();
+    setTimeout(()=> wheelLock=false, 700);
+  }, {passive:true});
+
+  // touch swipe support
+  let tx=0, ty=0;
+  window.addEventListener('touchstart', e=>{ tx=e.touches[0].clientX; ty=e.touches[0].clientY; });
+  window.addEventListener('touchend', e=>{
+    if(!booted){ dismissBoot(); return; }
+    const dx = e.changedTouches[0].clientX - tx;
+    const dy = e.changedTouches[0].clientY - ty;
+    if(Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 60){ dx<0 ? turnRight() : turnLeft(); }
+    else if(Math.abs(dy) > 60){ dy<0 ? forward() : backward(); }
+  });
+
+  updateWorld();
+
+  // ---- boot sequence: INITIALIZING VISOR... -> PRESS ANY KEY -> reveal HUD/world ----
+  let booted = false;
+  const boot = document.getElementById('boot');
+  const bootText = document.getElementById('boot-text');
+  const bootBar = document.getElementById('boot-bar');
+
+  function dismissBoot(){
+    if(booted) return;
+    booted = true;
+    document.body.classList.add('booted');
+    boot.style.opacity = '0';
+    setTimeout(()=> boot.style.display='none', 750);
+  }
+
+  window.addEventListener('load', ()=>{
+    setTimeout(()=>{
+      bootText.textContent = 'PRESS ANY KEY TO CONTINUE';
+      bootText.classList.add('blink');
+      bootBar.style.display = 'none';
+    }, 2200);
+  });
+
+  boot.addEventListener('click', ()=>{ if(!booted) dismissBoot(); });
+})();
+</script>
+</body>
+</html>
